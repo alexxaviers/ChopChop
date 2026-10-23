@@ -1,205 +1,98 @@
-# ChopChop Full-Stack Application
+<div align="center">
 
-A modern chat interface for Amazon Nova Lite model with a Python Flask backend and Next.js React frontend.
+# ChopChop 🍳
+
+**Snap a photo of your fridge. Get recipes you can actually make, and a grocery list for the rest.**
+
+An AI kitchen assistant co-built by a team of two (Aug–Oct 2025), deployed with the frontend on Vercel and the API on Render.
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-000000?style=flat-square&logo=flask&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-232F3E?style=flat-square&logo=amazonwebservices&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
+
+</div>
+
+---
+
+## What it does
+
+- **Fridge photo → ingredients → recipes.** Upload a photo and a multimodal model (Amazon Nova on AWS Bedrock) identifies what's in your fridge, then generates personalized recipes from it.
+- **Grocery lists.** Missing ingredients become a checklist you can track and edit.
+- **Pantry, recipes and history.** Browse saved recipes, manage your pantry, and pick up past chats; recently selected meals are remembered.
+- **Share by email.** Send a grocery list or recipe to yourself or someone else.
+- **Accounts.** Sign in, and your data persists across sessions.
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    U[Browser] --> F[Next.js + React frontend<br/>Vercel]
+    F -->|API routes proxy| B[Flask API<br/>Render]
+    B -->|resize + encode image| B
+    B -->|InvokeModel| N[Amazon Nova<br/>AWS Bedrock]
+    B <--> S[(Supabase<br/>users, chats, recipes, lists)]
+    B -->|SMTP| E[Email]
 ```
-Frontend (Next.js) → Backend API → Python Flask → AWS Bedrock Nova Lite
-```
 
-- **Frontend**: Next.js + React + TypeScript (port 3000)
-- **Backend**: Python Flask API (port 8000) 
-- **AI Model**: Amazon Nova Lite via AWS Bedrock
+The browser never talks to Bedrock or holds AWS credentials: Next.js API routes proxy requests to the Flask backend, which preprocesses images (downscales large photos and caps the payload size) before sending them to the model.
 
-## Features
+## What I worked on
 
-- 💬 Real-time chat interface with Nova Pro
-- 🖼️ Image upload and analysis with structured output
-- 🛒 Interactive grocery list management
-- 👨‍🍳 Recipe browsing and detailed views
-- 📧 Email integration for sharing lists and recipes
-- 💾 Data persistence with Supabase
-- 📱 Responsive design with tabbed interface
-- ⚡ Fast and modern UI
-- 🔒 Secure backend API integration
-- 🐍 Python backend with AWS Bedrock integration
+ChopChop was co-built end to end, and I worked across every layer:
 
-## Quick Start
+- **AI pipeline:** the multimodal flow on AWS Bedrock (Amazon Nova) that reads fridge photos, identifies ingredients and generates recipes and grocery lists.
+- **Backend:** the Python Flask API, including image preprocessing and REST endpoints for chat, auth sessions, saved data, recent recipes, chat history and email.
+- **Persistence:** Supabase storage for user accounts, chat history, recipes, grocery lists and recently selected meals.
+- **Frontend:** Next.js/React (TypeScript) interfaces for recipe browsing, pantry management, grocery-list tracking and email sharing.
+- **Deployment:** Vercel for the frontend, Render for the API.
 
-### Option 1: Use the startup script (Recommended)
+## API overview
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /chat` | Chat with the model, with an optional fridge photo |
+| `POST /auth/signin`, `/auth/verify`, `/auth/signout` | Session management |
+| `POST /save-data`, `/get-data`, `/update-data` | Grocery lists, recipes and pantry |
+| `POST /recent-recipes/add`, `/recent-recipes/get` | Recently selected meals |
+| `POST /chat-history` | Past conversations |
+| `POST /send-email` | Share a list or recipe |
+| `GET /health` | Health check |
+
+## Run it locally
+
+**Requirements:** Python 3.11+, Node 18+, an AWS account with Bedrock access to Amazon Nova, and a Supabase project.
+
 ```bash
-./start_chopchop.sh
+# backend
+cd backend
+pip install -r requirements.txt
+# set AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+# SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+python nova_backend.py            # http://localhost:8000
+
+# frontend (new terminal)
+cd nova-chat-frontend
+npm install
+# set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local
+npm run dev                       # http://localhost:3000
 ```
 
-### Option 2: Manual setup
+Or run `./start_chopchop.sh` to start both. Database setup is in `supabase_schema.sql`; deployment notes are in `DEPLOYMENT_GUIDE.md` and `RENDER_AWS_SETUP.md`.
 
-1. **Start Python Backend**:
-   ```bash
-   source venv/bin/activate
-   cd backend
-   python nova_backend.py
-   ```
-
-2. **Start Frontend** (in another terminal):
-   ```bash
-   cd nova-chat-frontend
-   npm run dev
-   ```
-
-3. **Open the application**:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-
-## Setup
-
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- AWS Account with Bedrock access
-- Supabase Account (for data persistence and email)
-
-### Backend Setup (Python)
-
-1. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Configure Supabase** (Required):
-   - Follow the instructions in `SUPABASE_SETUP.md`
-   - Create a `.env` file in the `backend/` directory with your Supabase credentials
-
-3. **Configure AWS credentials**:
-   ```bash
-   aws configure
-   # OR set environment variables:
-   export AWS_REGION=us-east-1
-   export AWS_ACCESS_KEY_ID=your_key
-   export AWS_SECRET_ACCESS_KEY=your_secret
-   ```
-
-4. **Test Supabase integration**:
-   ```bash
-   cd backend
-   python test_supabase.py
-   ```
-
-### Frontend Setup (Next.js)
-
-1. **Install dependencies**:
-   ```bash
-   cd nova-chat-frontend
-   npm install
-   ```
-
-2. **Configure Supabase** (Required):
-   Create a `.env.local` file in the `nova-chat-frontend/` directory:
-   ```bash
-   # Supabase Configuration
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-## Usage
-
-1. **Text Chat**: Type your message and press Enter
-2. **Fridge Photo Analysis**: Click "📸 Upload Fridge Photo" to analyze ingredients and generate recipes
-3. **Grocery List Management**: Switch to the "🛒 Grocery List" tab to manage your shopping list
-4. **Recipe Browsing**: Switch to the "👨‍🍳 Recipes" tab to view detailed recipes
-5. **Data Persistence**: Use "💾 Save Data" to save your lists and recipes
-6. **Email Sharing**: Use "📧 Send Email" to share your grocery list and recipes via email
-
-## API Endpoints
-
-### Backend (Python Flask)
-- `GET /health` - Health check
-- `POST /chat` - Send messages to Nova Pro model
-- `POST /save-data` - Save user data to Supabase
-- `POST /get-data` - Retrieve user data from Supabase
-- `POST /update-data` - Update user data in Supabase
-- `POST /send-email` - Send email with grocery list and recipes
-
-### Frontend (Next.js)
-- `POST /api/chat` - Proxy to Python backend
-- `POST /api/send-email` - Proxy for email sending
-
-## Project Structure
+## Project structure
 
 ```
-Cairt/
-├── backend/                    # Python backend
-│   ├── nova_backend.py        # Flask API server
-│   ├── supabase_config.py     # Supabase integration
-│   ├── test_supabase.py       # Supabase test script
-│   ├── requirements.txt       # Python dependencies
-│   └── .env                   # Environment variables
-├── nova-chat-frontend/         # Next.js frontend
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── api/
-│   │   │   │   ├── chat/route.ts        # Chat API proxy
-│   │   │   │   └── send-email/route.ts  # Email API proxy
-│   │   │   └── page.tsx                 # Main page
-│   │   ├── components/
-│   │   │   ├── ChatInterface.tsx        # Main chat component
-│   │   │   ├── GroceryList.tsx          # Grocery list component
-│   │   │   └── Recipes.tsx              # Recipes component
-│   │   └── lib/
-│   │       └── supabase.ts              # Supabase client
-│   ├── .env.local             # Frontend environment variables
-│   └── package.json
-├── supabase_schema.sql        # Database schema
-├── SUPABASE_SETUP.md          # Supabase setup guide
-├── start_chopchop.sh         # Startup script
-└── README.md                  # This file
+backend/              Flask API, Bedrock + Supabase integration, test scripts
+nova-chat-frontend/   Next.js app: chat, pantry, recipes, grocery list, auth
+supabase_schema.sql   Database schema
+render.yaml           Render deployment config
+vercel.json           Vercel deployment config
 ```
 
-## Environment Variables
+## Team
 
-### Backend (Python)
-- `SUPABASE_URL` - Supabase project URL (required)
-- `SUPABASE_ANON_KEY` - Supabase anonymous key (required)
-- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (required)
-- `AWS_REGION` - AWS region (default: us-east-1)
-- `AWS_ACCESS_KEY_ID` - AWS access key (required)
-- `AWS_SECRET_ACCESS_KEY` - AWS secret key (required)
-- `SMTP_HOST` - Email SMTP host (optional, default: smtp.gmail.com)
-- `SMTP_PORT` - Email SMTP port (optional, default: 587)
-- `SMTP_USER` - Email username (optional)
-- `SMTP_PASSWORD` - Email password (optional)
-- `PORT` - Backend port (default: 8000)
-- `FLASK_DEBUG` - Debug mode (default: False)
-
-### Frontend (Next.js)
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL (required)
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key (required)
-
-## AWS Permissions Required
-
-Your AWS credentials need the following permissions:
-- `bedrock:InvokeModel` for `amazon.nova-pro-v1:0`
-- Access to Bedrock Runtime service
-
-## Troubleshooting
-
-- **Backend not starting**: Check AWS credentials and Supabase configuration
-- **Frontend can't connect**: Verify backend is running on port 8000
-- **Supabase errors**: Run `python test_supabase.py` to diagnose issues
-- **Email not sending**: Check SMTP credentials and email configuration
-- **Data not saving**: Verify Supabase environment variables are set correctly
-- **CORS errors**: Backend has CORS enabled for localhost:3000
-- **Image upload issues**: Check image size limits and format support
-
-## Development
-
-- Backend logs: Check terminal running `cd backend && python nova_backend.py`
-- Frontend logs: Check terminal running `npm run dev`
-- API testing: Use `curl` or Postman to test backend endpoints
-
-## Technologies Used
-
-- **Backend**: Python, Flask, AWS SDK (boto3)
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **AI**: Amazon Nova Lite via AWS Bedrock
-- **Styling**: Custom CSS (no external dependencies)
+Co-built by [Alex Xavier](https://github.com/alexxaviers) and [Abhishek Prabhu](https://github.com/AbhishekPrabhu0914). Original repository: [AbhishekPrabhu0914/ChopChop](https://github.com/AbhishekPrabhu0914/ChopChop).
